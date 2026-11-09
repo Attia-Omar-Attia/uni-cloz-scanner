@@ -91,6 +91,11 @@ input {
   border-radius: 10px;
 }
 
+#reader video {
+  width: 100% !important;
+  object-fit: cover;
+}
+
 #status {
   margin-top: 20px;
   line-height: 2;
@@ -207,11 +212,7 @@ async function startScanner() {
       { facingMode: 'environment' },
 
       {
-        fps: 15,
-        qrbox: {
-          width: 320,
-          height: 120
-        },
+        fps: 10,
         disableFlip: true
       },
 
@@ -267,7 +268,6 @@ async function closeScanner() {
 
   if (!currentScanner) {
     scanBtn.disabled = false;
-    statusText('الكاميرا مغلقة بالفعل');
     return;
   }
 

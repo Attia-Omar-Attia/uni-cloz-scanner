@@ -4,42 +4,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UNI - CLOZ Scanner</title>
+<title>UNI - CLOZ Scanner Test</title>
 
-<!-- ZXing Barcode Scanner -->
-<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js"></script>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
   padding: 20px;
   background: #f4f4f4;
   font-family: Arial, sans-serif;
-  color: #171717;
   text-align: center;
+  color: #171717;
 }
 
 .card {
   max-width: 500px;
-  margin: 30px auto;
+  margin: 25px auto;
   background: white;
-  padding: 25px;
+  padding: 22px;
   border-radius: 16px;
-  box-shadow: 0 3px 15px #0000000d;
-}
-
-h2 {
-  letter-spacing: 2px;
-  margin-bottom: 8px;
-}
-
-p {
-  color: #777;
-  font-size: 13px;
 }
 
 button {
@@ -50,140 +36,84 @@ button {
   border-radius: 9px;
   background: #171717;
   color: white;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: bold;
-  cursor: pointer;
 }
 
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-#closeBtn {
-  background: #b42318;
-}
-
-#copyBtn {
-  background: #777;
-}
-
-#resetBtn {
-  background: #b99b62;
-  color: #171717;
-}
+#closeBtn { background: #b42318; }
+#copyBtn { background: #777; }
+#resetBtn { background: #b99b62; color: #171717; }
 
 input {
   width: 100%;
-  padding: 15px;
-  margin-top: 15px;
+  padding: 16px;
+  margin-top: 18px;
   border: 1px solid #ddd;
   border-radius: 9px;
-  font-size: 16px;
   text-align: center;
   direction: ltr;
-  background: #fafafa;
+  font-size: 16px;
 }
 
-#reader {
+video {
   width: 100%;
   margin-top: 20px;
-  overflow: hidden;
-  border-radius: 10px;
   background: #111;
-}
-
-#reader video {
-  display: block;
-  width: 100%;
-  height: auto;
-  min-height: 220px;
-  object-fit: contain;
+  border-radius: 10px;
 }
 
 #status {
   margin-top: 20px;
-  line-height: 2;
+  line-height: 1.8;
   overflow-wrap: anywhere;
-  font-size: 14px;
   font-weight: bold;
-}
-
-.footer {
-  margin-top: 20px;
-  color: #999;
-  font-size: 11px;
 }
 </style>
 </head>
 
 <body>
-
 <div class="card">
 
-  <h2>UNI - CLOZ</h2>
-  <p>WAREHOUSE BARCODE SCANNER</p>
+<h2>UNI - CLOZ</h2>
+<p>BARCODE READER TEST</p>
 
-  <button id="scanBtn" onclick="startScanner()">
-    فتح الكاميرا
-  </button>
+<button id="scanBtn" onclick="startScanner()">فتح الكاميرا</button>
+<button id="closeBtn" onclick="closeScanner()">إغلاق الكاميرا</button>
 
-  <button id="closeBtn" onclick="closeScanner()">
-    إغلاق الكاميرا
-  </button>
+<video id="video" autoplay playsinline muted></video>
 
-  <div id="reader"></div>
+<input id="result" placeholder="الباركود المقروء" readonly>
 
-  <input
-    id="result"
-    placeholder="الباركود المقروء"
-    readonly
-  >
+<button id="copyBtn" onclick="copyCode()">نسخ الكود</button>
+<button id="resetBtn" onclick="resetScanner()">مسح وإعادة المحاولة</button>
 
-  <button id="copyBtn" onclick="copyCode()">
-    نسخ الكود
-  </button>
-
-  <button id="resetBtn" onclick="resetScanner()">
-    مسح وإعادة المحاولة
-  </button>
-
-  <div id="status">جاهز للمسح</div>
-
-  <div class="footer">
-    UNI - CLOZ | INVENTORY SYSTEM
-  </div>
+<div id="status">جاهز للمسح</div>
 
 </div>
 
 <script>
-
-let codeReader = null;
-let cameraControls = null;
+let reader = null;
+let controls = null;
 let scannedCode = '';
 let busy = false;
 let starting = false;
 
+const video = document.getElementById('video');
 const resultInput = document.getElementById('result');
 const statusBox = document.getElementById('status');
 const scanBtn = document.getElementById('scanBtn');
 
-function statusText(message) {
-  statusBox.textContent = message;
+function statusText(text) {
+  statusBox.textContent = text;
 }
 
 async function startScanner() {
 
-  if (starting || cameraControls) return;
-
-  if (!window.isSecureContext) {
-    statusText('الكاميرا تحتاج اتصال HTTPS آمن');
-    return;
-  }
+  if (starting || controls) return;
 
   if (!window.ZXingBrowser ||
       !ZXingBrowser.BrowserMultiFormatReader) {
-    statusText('تعذر تحميل مكتبة ZXing. تحقق من الإنترنت.');
+    statusText('مكتبة ZXing لم يتم تحميلها. تحقق من الإنترنت.');
     return;
   }
 
@@ -191,70 +121,53 @@ async function startScanner() {
   busy = false;
   scanBtn.disabled = true;
 
-  statusText('جاري تجهيز قارئ الباركود...');
-
-  const readerArea = document.getElementById('reader');
-  readerArea.innerHTML = '';
-
-  const video = document.createElement('video');
-  video.setAttribute('playsinline', 'true');
-  video.setAttribute('autoplay', 'true');
-  video.muted = true;
-
-  readerArea.appendChild(video);
+  statusText('جاري تشغيل الكاميرا...');
 
   try {
 
-    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+    reader = new ZXingBrowser.BrowserMultiFormatReader();
 
-    statusText('جاري تشغيل الكاميرا...');
-
-    const controls = await codeReader.decodeFromConstraints(
-      {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: false
-      },
+    const newControls = await reader.decodeFromVideoDevice(
+      undefined,
       video,
-      async function(result, error) {
+      async (result, error, scanControls) => {
 
-        if (!result || busy || !cameraControls) return;
+        // استلام أدوات التحكم من callback نفسه
+        if (scanControls && !controls) {
+          controls = scanControls;
+        }
 
-        busy = true;
+        if (result && !busy) {
 
-        scannedCode = result.getText().trim();
-        resultInput.value = scannedCode;
+          busy = true;
 
-        statusText('تمت قراءة الباركود بنجاح ✅');
+          scannedCode = result.getText().trim();
+          resultInput.value = scannedCode;
 
-        await closeScanner(true);
+          statusText('تمت القراءة بنجاح ✅: ' + scannedCode);
+
+          await closeScanner(true);
+        }
       }
     );
 
-    cameraControls = controls;
+    if (!controls) {
+      controls = newControls;
+    }
 
-    statusText('وجه الكاميرا إلى الباركود');
+    statusText('الكاميرا تعمل. وجّهها إلى الباركود.');
 
   } catch (error) {
 
-    if (cameraControls) {
-      try {
-        cameraControls.stop();
-      } catch (e) {}
-    }
-
-    cameraControls = null;
-    codeReader = null;
-
-    readerArea.innerHTML = '';
-
+    statusText('خطأ: ' + (error.message || error));
     scanBtn.disabled = false;
 
-    statusText('تعذر تشغيل الكاميرا: ' +
-      (error.message || error));
+    if (controls) {
+      controls.stop();
+      controls = null;
+    }
+
+    reader = null;
 
   } finally {
     starting = false;
@@ -263,36 +176,32 @@ async function startScanner() {
 
 async function closeScanner(fromScan = false) {
 
-  const controls = cameraControls;
-
-  cameraControls = null;
-
   if (controls) {
     try {
       controls.stop();
-    } catch (error) {}
+    } catch (e) {}
   }
 
-  if (codeReader) {
+  controls = null;
+
+  if (reader) {
     try {
-      codeReader.reset();
-    } catch (error) {}
+      reader.reset();
+    } catch (e) {}
   }
 
-  codeReader = null;
+  reader = null;
 
-  document.getElementById('reader').innerHTML = '';
+  video.pause();
+  video.srcObject = null;
 
   scanBtn.disabled = false;
-  scanBtn.textContent = 'فتح الكاميرا';
 
-  if (fromScan) {
-    statusText('تمت القراءة وإغلاق الكاميرا بنجاح ✅');
-  } else if (scannedCode) {
-    statusText('تم إغلاق الكاميرا بنجاح ✅');
-  } else {
-    statusText('تم إغلاق الكاميرا');
-  }
+  statusText(
+    fromScan
+      ? 'تمت القراءة وإغلاق الكاميرا بنجاح ✅'
+      : 'تم إغلاق الكاميرا'
+  );
 }
 
 async function copyCode() {
@@ -303,17 +212,11 @@ async function copyCode() {
   }
 
   try {
-
     await navigator.clipboard.writeText(scannedCode);
     statusText('تم نسخ الكود بنجاح ✅');
-
-  } catch (error) {
-
-    resultInput.focus();
+  } catch (e) {
     resultInput.select();
-
-    statusText('حدد الكود واضغط نسخ من جهازك');
-
+    statusText('حدد الكود وانسخه يدوياً');
   }
 }
 
@@ -323,22 +226,14 @@ async function resetScanner() {
 
   scannedCode = '';
   busy = false;
-
   resultInput.value = '';
 
-  scanBtn.disabled = false;
-  scanBtn.textContent = 'فتح الكاميرا';
-
-  statusText('جاهز لمسح باركود جديد');
+  statusText('جاهز للمسح من جديد');
 }
 
-window.addEventListener('pagehide', function() {
-  if (cameraControls) {
-    cameraControls.stop();
-    cameraControls = null;
-  }
+window.addEventListener('pagehide', () => {
+  if (controls) controls.stop();
 });
-
 </script>
 
 </body>

@@ -1,23 +1,25 @@
- 
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UNI - CLOZ Scanner Test</title>
+<title>UNI - CLOZ Scanner</title>
 
 <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
 
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
   padding: 20px;
   background: #f4f4f4;
   font-family: Arial, sans-serif;
-  text-align: center;
   color: #171717;
+  text-align: center;
 }
 
 .card {
@@ -26,6 +28,17 @@ body {
   background: white;
   padding: 22px;
   border-radius: 16px;
+  box-shadow: 0 3px 15px #0000000d;
+}
+
+h2 {
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+p {
+  color: #777;
+  font-size: 13px;
 }
 
 button {
@@ -38,11 +51,26 @@ button {
   color: white;
   font-size: 17px;
   font-weight: bold;
+  cursor: pointer;
 }
 
-#closeBtn { background: #b42318; }
-#copyBtn { background: #777; }
-#resetBtn { background: #b99b62; color: #171717; }
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#closeBtn {
+  background: #b42318;
+}
+
+#copyBtn {
+  background: #777;
+}
+
+#resetBtn {
+  background: #b99b62;
+  color: #171717;
+}
 
 input {
   width: 100%;
@@ -53,6 +81,7 @@ input {
   text-align: center;
   direction: ltr;
   font-size: 16px;
+  background: #fafafa;
 }
 
 video {
@@ -68,35 +97,58 @@ video {
   overflow-wrap: anywhere;
   font-weight: bold;
 }
+
+.footer {
+  margin-top: 20px;
+  color: #999;
+  font-size: 11px;
+}
 </style>
 </head>
 
 <body>
+
 <div class="card">
 
 <h2>UNI - CLOZ</h2>
-<p>BARCODE READER TEST</p>
+<p>WAREHOUSE BARCODE SCANNER</p>
 
-<button id="scanBtn" onclick="startScanner()">فتح الكاميرا</button>
-<button id="closeBtn" onclick="closeScanner()">إغلاق الكاميرا</button>
+<button id="scanBtn" onclick="startScanner()">
+فتح الكاميرا
+</button>
+
+<button id="closeBtn" onclick="closeScanner()">
+إغلاق الكاميرا
+</button>
 
 <video id="video" autoplay playsinline muted></video>
 
 <input id="result" placeholder="الباركود المقروء" readonly>
 
-<button id="copyBtn" onclick="copyCode()">نسخ الكود</button>
-<button id="resetBtn" onclick="resetScanner()">مسح وإعادة المحاولة</button>
+<button id="copyBtn" onclick="copyCode()">
+نسخ الكود
+</button>
+
+<button id="resetBtn" onclick="resetScanner()">
+مسح وإعادة المحاولة
+</button>
 
 <div id="status">جاهز للمسح</div>
+
+<div class="footer">
+UNI - CLOZ | INVENTORY SYSTEM
+</div>
 
 </div>
 
 <script>
+
 let reader = null;
 let controls = null;
 let scannedCode = '';
 let busy = false;
 let starting = false;
+let audioContext = null;
 
 const video = document.getElementById('video');
 const resultInput = document.getElementById('result');
@@ -107,44 +159,113 @@ function statusText(text) {
   statusBox.textContent = text;
 }
 
+// تجهيز الصوت بعد تفاعل المستخدم
+function prepareAudio() {
+  try {
+    if (!audioContext) {
+      audioContext = new (
+        window.AudioContext || window.webkitAudioContext
+      )();
+    }
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+  } catch (e) {
+    console.log('Audio unavailable', e);
+  }
+}
+
+// صوت تأكيد القراءة
+function playBeep() {
+  try {
+    if (!audioContext) return;
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 1000;
+
+    gain.gain.setValueAtTime(
+      0.001,
+      audioContext.currentTime
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.25,
+      audioContext.currentTime + 0.01
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      audioContext.currentTime + 0.18
+    );
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.19);
+
+  } catch (e) {
+    console.log('Beep error', e);
+  }
+}
+
+// تشغيل الكاميرا والماسح
 async function startScanner() {
 
   if (starting || controls) return;
 
+  if (!window.isSecureContext) {
+    statusText('الكاميرا تحتاج اتصال HTTPS آمن');
+    return;
+  }
+
   if (!window.ZXingBrowser ||
       !ZXingBrowser.BrowserMultiFormatReader) {
-    statusText('مكتبة ZXing لم يتم تحميلها. تحقق من الإنترنت.');
+    statusText('تعذر تحميل مكتبة ZXing');
     return;
   }
 
   starting = true;
   busy = false;
+
   scanBtn.disabled = true;
+
+  prepareAudio();
 
   statusText('جاري تشغيل الكاميرا...');
 
   try {
 
- const hints = new Map();
+    const hints = new Map();
 
-hints.set(
-  ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS,
-  [ZXingBrowser.BarcodeFormat.CODE_128]
-);
+    hints.set(
+      ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS,
+      [ZXingBrowser.BarcodeFormat.CODE_128]
+    );
 
-hints.set(
-  ZXingBrowser.DecodeHintType.TRY_HARDER,
-  true
-);
+    hints.set(
+      ZXingBrowser.DecodeHintType.TRY_HARDER,
+      true
+    );
 
-reader = new ZXingBrowser.BrowserMultiFormatReader(hints, 150);
+    reader = new ZXingBrowser.BrowserMultiFormatReader(
+      hints,
+      150
+    );
 
     const newControls = await reader.decodeFromVideoDevice(
       undefined,
       video,
       async (result, error, scanControls) => {
 
-        // استلام أدوات التحكم من callback نفسه
         if (scanControls && !controls) {
           controls = scanControls;
         }
@@ -154,9 +275,13 @@ reader = new ZXingBrowser.BrowserMultiFormatReader(hints, 150);
           busy = true;
 
           scannedCode = result.getText().trim();
+
           resultInput.value = scannedCode;
 
-          statusText('تمت القراءة بنجاح ✅: ' + scannedCode);
+          // تشغيل صوت نجاح القراءة
+          playBeep();
+
+          statusText('تمت قراءة الباركود بنجاح ✅');
 
           await closeScanner(true);
         }
@@ -171,30 +296,42 @@ reader = new ZXingBrowser.BrowserMultiFormatReader(hints, 150);
 
   } catch (error) {
 
-    statusText('خطأ: ' + (error.message || error));
-    scanBtn.disabled = false;
-
     if (controls) {
-      controls.stop();
-      controls = null;
+      try {
+        controls.stop();
+      } catch (e) {}
     }
 
+    controls = null;
     reader = null;
+
+    video.pause();
+    video.srcObject = null;
+
+    scanBtn.disabled = false;
+
+    statusText(
+      'تعذر تشغيل الكاميرا: ' +
+      (error.message || error)
+    );
 
   } finally {
     starting = false;
   }
 }
 
+// إغلاق الكاميرا
 async function closeScanner(fromScan = false) {
 
-  if (controls) {
-    try {
-      controls.stop();
-    } catch (e) {}
-  }
+  const activeControls = controls;
 
   controls = null;
+
+  if (activeControls) {
+    try {
+      activeControls.stop();
+    } catch (e) {}
+  }
 
   if (reader) {
     try {
@@ -209,13 +346,16 @@ async function closeScanner(fromScan = false) {
 
   scanBtn.disabled = false;
 
-  statusText(
-    fromScan
-      ? 'تمت القراءة وإغلاق الكاميرا بنجاح ✅'
-      : 'تم إغلاق الكاميرا'
-  );
+  if (fromScan) {
+    statusText('تمت القراءة وإغلاق الكاميرا بنجاح ✅');
+  } else if (scannedCode) {
+    statusText('تم إغلاق الكاميرا بنجاح ✅');
+  } else {
+    statusText('تم إغلاق الكاميرا');
+  }
 }
 
+// نسخ الكود
 async function copyCode() {
 
   if (!scannedCode) {
@@ -224,28 +364,47 @@ async function copyCode() {
   }
 
   try {
+
     await navigator.clipboard.writeText(scannedCode);
+
     statusText('تم نسخ الكود بنجاح ✅');
+
   } catch (e) {
+
+    resultInput.focus();
     resultInput.select();
+
     statusText('حدد الكود وانسخه يدوياً');
+
   }
 }
 
+// إعادة المحاولة
 async function resetScanner() {
 
   await closeScanner();
 
   scannedCode = '';
   busy = false;
+
   resultInput.value = '';
+
+  scanBtn.disabled = false;
+  scanBtn.textContent = 'فتح الكاميرا';
 
   statusText('جاهز للمسح من جديد');
 }
 
-window.addEventListener('pagehide', () => {
-  if (controls) controls.stop();
+// إيقاف الكاميرا عند مغادرة الصفحة
+window.addEventListener('pagehide', function() {
+
+  if (controls) {
+    controls.stop();
+    controls = null;
+  }
+
 });
+
 </script>
 
 </body>

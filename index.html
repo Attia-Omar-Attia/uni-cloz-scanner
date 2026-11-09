@@ -6,12 +6,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UNI - CLOZ Scanner</title>
 
+<!-- مكتبة قراءة الباركود -->
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+
+<!-- مكتبة تشغيل الكاميرا -->
 <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -59,18 +61,9 @@ button:disabled {
   cursor: not-allowed;
 }
 
-#closeBtn {
-  background: #b42318;
-}
-
-#copyBtn {
-  background: #777;
-}
-
-#resetBtn {
-  background: #b99b62;
-  color: #171717;
-}
+#closeBtn { background: #b42318; }
+#copyBtn { background: #777; }
+#resetBtn { background: #b99b62; color: #171717; }
 
 input {
   width: 100%;
@@ -159,7 +152,7 @@ function statusText(text) {
   statusBox.textContent = text;
 }
 
-// تجهيز الصوت بعد تفاعل المستخدم
+// تجهيز الصوت
 function prepareAudio() {
   try {
     if (!audioContext) {
@@ -217,7 +210,7 @@ function playBeep() {
   }
 }
 
-// تشغيل الكاميرا والماسح
+// تشغيل الكاميرا
 async function startScanner() {
 
   if (starting || controls) return;
@@ -229,13 +222,19 @@ async function startScanner() {
 
   if (!window.ZXingBrowser ||
       !ZXingBrowser.BrowserMultiFormatReader) {
-    statusText('تعذر تحميل مكتبة ZXing');
+    statusText('تعذر تحميل مكتبة الكاميرا');
+    return;
+  }
+
+  if (!window.ZXing ||
+      !ZXing.DecodeHintType ||
+      !ZXing.BarcodeFormat) {
+    statusText('تعذر تحميل مكتبة تعريف الباركود');
     return;
   }
 
   starting = true;
   busy = false;
-
   scanBtn.disabled = true;
 
   prepareAudio();
@@ -247,18 +246,17 @@ async function startScanner() {
     const hints = new Map();
 
     hints.set(
-      ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS,
-      [ZXingBrowser.BarcodeFormat.CODE_128]
+      ZXing.DecodeHintType.POSSIBLE_FORMATS,
+      [ZXing.BarcodeFormat.CODE_128]
     );
 
     hints.set(
-      ZXingBrowser.DecodeHintType.TRY_HARDER,
+      ZXing.DecodeHintType.TRY_HARDER,
       true
     );
 
     reader = new ZXingBrowser.BrowserMultiFormatReader(
-      hints,
-      150
+      hints
     );
 
     const newControls = await reader.decodeFromVideoDevice(
@@ -275,10 +273,8 @@ async function startScanner() {
           busy = true;
 
           scannedCode = result.getText().trim();
-
           resultInput.value = scannedCode;
 
-          // تشغيل صوت نجاح القراءة
           playBeep();
 
           statusText('تمت قراءة الباركود بنجاح ✅');
@@ -324,7 +320,6 @@ async function startScanner() {
 async function closeScanner(fromScan = false) {
 
   const activeControls = controls;
-
   controls = null;
 
   if (activeControls) {
@@ -364,18 +359,13 @@ async function copyCode() {
   }
 
   try {
-
     await navigator.clipboard.writeText(scannedCode);
-
     statusText('تم نسخ الكود بنجاح ✅');
 
   } catch (e) {
-
     resultInput.focus();
     resultInput.select();
-
     statusText('حدد الكود وانسخه يدوياً');
-
   }
 }
 
@@ -386,7 +376,6 @@ async function resetScanner() {
 
   scannedCode = '';
   busy = false;
-
   resultInput.value = '';
 
   scanBtn.disabled = false;
@@ -397,12 +386,10 @@ async function resetScanner() {
 
 // إيقاف الكاميرا عند مغادرة الصفحة
 window.addEventListener('pagehide', function() {
-
   if (controls) {
     controls.stop();
     controls = null;
   }
-
 });
 
 </script>

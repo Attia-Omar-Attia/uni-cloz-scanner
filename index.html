@@ -5,69 +5,131 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UNI - CLOZ Scanner</title>
+
 <script src="https://unpkg.com/@zxing/browser@0.1.5"></script>
 
 <style>
 * { box-sizing: border-box; }
+
 body {
-  margin:0; padding:20px; background:#f4f4f4;
-  font-family:Arial,sans-serif; color:#171717; text-align:center;
+  margin: 0;
+  padding: 20px;
+  background: #f4f4f4;
+  font-family: Arial, sans-serif;
+  color: #171717;
+  text-align: center;
 }
+
 .card {
-  max-width:500px; margin:25px auto; background:white;
-  padding:22px; border-radius:16px; box-shadow:0 3px 15px #0000000d;
+  max-width: 500px;
+  margin: 25px auto;
+  background: white;
+  padding: 22px;
+  border-radius: 16px;
+  box-shadow: 0 3px 15px #0000000d;
 }
-h2 { letter-spacing:2px; margin-bottom:8px; }
-p { color:#777; font-size:13px; }
+
+h2 { letter-spacing: 2px; margin-bottom: 8px; }
+p { color: #777; font-size: 13px; }
+
 button {
-  width:100%; padding:16px; margin-top:12px; border:0;
-  border-radius:9px; background:#171717; color:white;
-  font-size:17px; font-weight:bold; cursor:pointer;
+  width: 100%;
+  padding: 16px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 9px;
+  background: #171717;
+  color: white;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
 }
-button:disabled { opacity:.5; cursor:not-allowed; }
-#closeBtn { background:#b42318; }
-#copyBtn { background:#777; }
-#sendBtn { background:#b99b62; color:#171717; }
-#resetBtn { background:#eee; color:#171717; }
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#closeBtn { background: #b42318; }
+#copyBtn { background: #777; }
+#sendBtn { background: #b99b62; color: #171717; }
+#resetBtn { background: #b99b62; color: #171717; }
+
 video {
-  width:100%; margin-top:20px; background:#111; border-radius:10px;
+  width: 100%;
+  margin-top: 20px;
+  background: #111;
+  border-radius: 10px;
 }
+
 input {
-  width:100%; padding:16px; margin-top:18px; border:1px solid #ddd;
-  border-radius:9px; text-align:center; direction:ltr;
-  font-size:16px; background:#fafafa;
+  width: 100%;
+  padding: 16px;
+  margin-top: 18px;
+  border: 1px solid #ddd;
+  border-radius: 9px;
+  text-align: center;
+  direction: ltr;
+  font-size: 16px;
+  background: #fafafa;
 }
+
 #status {
-  margin-top:20px; line-height:1.8; overflow-wrap:anywhere;
-  font-weight:bold;
+  margin-top: 20px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  font-weight: bold;
 }
-.footer { margin-top:20px; color:#999; font-size:11px; }
+
+.footer {
+  margin-top: 20px;
+  color: #999;
+  font-size: 11px;
+}
 </style>
 </head>
 
 <body>
+
 <div class="card">
-  <h2>UNI - CLOZ</h2>
-  <p>WAREHOUSE BARCODE SCANNER</p>
 
-  <button id="scanBtn" onclick="startScanner()">فتح الكاميرا</button>
-  <button id="closeBtn" onclick="closeScanner()">إغلاق الكاميرا</button>
+<h2>UNI - CLOZ</h2>
+<p>WAREHOUSE BARCODE SCANNER</p>
 
-  <video id="video" autoplay playsinline muted></video>
+<button id="scanBtn" onclick="startScanner()">
+فتح الكاميرا
+</button>
 
-  <input id="result" placeholder="الباركود المقروء" readonly>
+<button id="closeBtn" onclick="closeScanner()">
+إغلاق الكاميرا
+</button>
 
-  <button id="copyBtn" onclick="copyCode()">نسخ الكود</button>
-  <button id="sendBtn" onclick="sendToWarehouse()" disabled>
-    إرسال للمخزن
-  </button>
-  <button id="resetBtn" onclick="resetScanner()">مسح وإعادة المحاولة</button>
+<video id="video" autoplay playsinline muted></video>
 
-  <div id="status">جاهز للمسح</div>
-  <div class="footer">UNI - CLOZ | INVENTORY SYSTEM</div>
+<input id="result" placeholder="الباركود المقروء" readonly>
+
+<button id="copyBtn" onclick="copyCode()">
+نسخ الكود
+</button>
+
+<button id="sendBtn" onclick="sendToWarehouse()" disabled>
+إرسال للمخزن
+</button>
+
+<button id="resetBtn" onclick="resetScanner()">
+مسح وإعادة المحاولة
+</button>
+
+<div id="status">جاهز للمسح</div>
+
+<div class="footer">
+UNI - CLOZ | INVENTORY SYSTEM
+</div>
+
 </div>
 
 <script>
+
 let reader = null;
 let controls = null;
 let scannedCode = '';
@@ -81,51 +143,81 @@ const statusBox = document.getElementById('status');
 const scanBtn = document.getElementById('scanBtn');
 const sendBtn = document.getElementById('sendBtn');
 
-// ضع هنا رابط Apps Script المنشور وينتهي بـ /exec
-const WAREHOUSE_URL = 'https://script.google.com/macros/s/AKfycbzakQbViiSNUj2ZH_lxKjO9Nexutvwd8m3DNtgaYeaDehj96L-gerZNpD_LrqeTlc0/exec';
+// رابط المخزن
+const WAREHOUSE_URL =
+'https://script.google.com/macros/s/AKfycbzakQbViiSNUj2ZH_lxKjO9Nexutvwd8m3DNtgaYeaDehj96L-gerZNpD_LrqeTlc0/exec';
 
 function statusText(text) {
   statusBox.textContent = text;
 }
 
+// تجهيز الصوت
 function prepareAudio() {
   try {
     if (!audioContext) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioContext = new (
+        window.AudioContext || window.webkitAudioContext
+      )();
     }
-    if (audioContext.state === 'suspended') audioContext.resume();
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
   } catch (e) {
     console.log('Audio unavailable', e);
   }
 }
 
+// صوت تأكيد القراءة
 function playBeep() {
   try {
     if (!audioContext) return;
-    if (audioContext.state === 'suspended') audioContext.resume();
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
 
     const oscillator = audioContext.createOscillator();
     const gain = audioContext.createGain();
 
     oscillator.type = 'sine';
     oscillator.frequency.value = 1000;
-    gain.gain.setValueAtTime(.001, audioContext.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.25, audioContext.currentTime + .01);
-    gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + .18);
+
+    gain.gain.setValueAtTime(
+      0.001,
+      audioContext.currentTime
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.25,
+      audioContext.currentTime + 0.01
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      audioContext.currentTime + 0.18
+    );
 
     oscillator.connect(gain);
     gain.connect(audioContext.destination);
+
     oscillator.start();
-    oscillator.stop(audioContext.currentTime + .19);
+    oscillator.stop(audioContext.currentTime + 0.19);
+
   } catch (e) {
     console.log('Beep error', e);
   }
 }
 
+// تشغيل الكاميرا
 async function startScanner() {
+
   if (starting || controls) return;
 
-  if (!window.ZXingBrowser || !ZXingBrowser.BrowserMultiFormatReader) {
+  if (
+    !window.ZXingBrowser ||
+    !ZXingBrowser.BrowserMultiFormatReader
+  ) {
     statusText('مكتبة ZXing لم يتم تحميلها. تحقق من الإنترنت.');
     return;
   }
@@ -133,79 +225,111 @@ async function startScanner() {
   starting = true;
   busy = false;
   scanBtn.disabled = true;
+
   prepareAudio();
   statusText('جاري تشغيل الكاميرا...');
 
   try {
-   const hints = new Map();
 
-hints.set(
-  ZXingBrowser.CommonDecodeHintType.POSSIBLE_FORMATS,
-  [ZXingBrowser.BarcodeFormat.CODE_128]
-);
-
-reader = new ZXingBrowser.BrowserMultiFormatReader(
-  hints,
-  150
-);
+    // قارئ ZXing بالإعدادات الافتراضية
+    reader = new ZXingBrowser.BrowserMultiFormatReader();
 
     const newControls = await reader.decodeFromVideoDevice(
       undefined,
       video,
       async (result, error, scanControls) => {
-        if (scanControls && !controls) controls = scanControls;
+
+        if (scanControls && !controls) {
+          controls = scanControls;
+        }
 
         if (result && !busy) {
+
           busy = true;
-          scannedCode = result.getText().trim();
+
+          scannedCode = result.getText().trim().toUpperCase();
           resultInput.value = scannedCode;
+
           sendBtn.disabled = false;
+
           playBeep();
+
           statusText('تمت القراءة بنجاح ✅: ' + scannedCode);
+
           await closeScanner(true);
         }
       }
     );
 
-    if (!controls) controls = newControls;
-    statusText('الكاميرا تعمل. وجّهها إلى الباركود.');
-  } catch (error) {
-    if (controls) {
-      try { controls.stop(); } catch (e) {}
+    if (!controls) {
+      controls = newControls;
     }
+
+    statusText('الكاميرا تعمل. وجّهها إلى الباركود.');
+
+  } catch (error) {
+
+    if (controls) {
+      try {
+        controls.stop();
+      } catch (e) {}
+    }
+
     controls = null;
     reader = null;
+
     video.pause();
     video.srcObject = null;
+
     scanBtn.disabled = false;
-    statusText('تعذر تشغيل الكاميرا: ' + (error.message || error));
+
+    statusText(
+      'تعذر تشغيل الكاميرا: ' +
+      (error.message || error)
+    );
+
   } finally {
     starting = false;
   }
 }
 
+// إغلاق الكاميرا
 async function closeScanner(fromScan = false) {
+
   const activeControls = controls;
   controls = null;
 
   if (activeControls) {
-    try { activeControls.stop(); } catch (e) {}
+    try {
+      activeControls.stop();
+    } catch (e) {}
   }
+
   if (reader) {
-    try { reader.reset(); } catch (e) {}
+    try {
+      reader.reset();
+    } catch (e) {}
   }
 
   reader = null;
+
   video.pause();
   video.srcObject = null;
+
   scanBtn.disabled = false;
 
-  if (fromScan) statusText('تمت القراءة وإغلاق الكاميرا بنجاح ✅');
-  else if (scannedCode) statusText('تم إغلاق الكاميرا بنجاح ✅');
-  else statusText('تم إغلاق الكاميرا');
+  if (fromScan) {
+    statusText('تمت القراءة وإغلاق الكاميرا بنجاح ✅');
+  } else if (scannedCode) {
+    statusText('تم إغلاق الكاميرا بنجاح ✅');
+  } else {
+    statusText('تم إغلاق الكاميرا');
+  }
 }
 
+// نسخ الكود
 async function copyCode() {
+
   if (!scannedCode) {
     statusText('امسح باركود أولاً');
     return;
@@ -214,6 +338,7 @@ async function copyCode() {
   try {
     await navigator.clipboard.writeText(scannedCode);
     statusText('تم نسخ الكود بنجاح ✅');
+
   } catch (e) {
     resultInput.focus();
     resultInput.select();
@@ -221,8 +346,9 @@ async function copyCode() {
   }
 }
 
-// فتح المخزن بالكود فقط، دون تسجيل أي حركة تلقائياً
+// إرسال الكود للمخزن
 function sendToWarehouse() {
+
   if (!scannedCode) {
     statusText('امسح باركود أولاً');
     return;
@@ -231,28 +357,41 @@ function sendToWarehouse() {
   const url = new URL(WAREHOUSE_URL);
   url.searchParams.set('sku', scannedCode);
 
-  window.open(url.toString(), '_blank');
-  statusText('تم فتح صفحة المخزن بالكود المقروء. اختر العملية وأكد التسجيل هناك.');
+  const newWindow = window.open(url.toString(), '_blank');
+
+  if (newWindow) {
+    statusText('تم فتح صفحة المخزن بالكود. اختر العملية وأكد التسجيل.');
+  } else {
+    statusText('المتصفح منع فتح الصفحة. اسمح بالنوافذ المنبثقة وجرب مرة أخرى.');
+  }
 }
 
+// إعادة المحاولة
 async function resetScanner() {
+
   await closeScanner();
 
   scannedCode = '';
   busy = false;
+
   resultInput.value = '';
   sendBtn.disabled = true;
+
   scanBtn.disabled = false;
   scanBtn.textContent = 'فتح الكاميرا';
+
   statusText('جاهز للمسح من جديد');
 }
 
+// إيقاف الكاميرا عند مغادرة الصفحة
 window.addEventListener('pagehide', function() {
   if (controls) {
     controls.stop();
     controls = null;
   }
 });
+
 </script>
+
 </body>
 </html>

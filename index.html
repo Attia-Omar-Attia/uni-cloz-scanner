@@ -125,7 +125,19 @@ async function startScanner() {
 
   try {
 
-    reader = new ZXingBrowser.BrowserMultiFormatReader();
+ const hints = new Map();
+
+hints.set(
+  ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS,
+  [ZXingBrowser.BarcodeFormat.CODE_128]
+);
+
+hints.set(
+  ZXingBrowser.DecodeHintType.TRY_HARDER,
+  true
+);
+
+reader = new ZXingBrowser.BrowserMultiFormatReader(hints, 150);
 
     const newControls = await reader.decodeFromVideoDevice(
       undefined,

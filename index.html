@@ -137,14 +137,17 @@ async function startScanner() {
   statusText('جاري تشغيل الكاميرا...');
 
   try {
-    const hints = new Map();
-    hints.set(
-      ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS,
-      [ZXingBrowser.BarcodeFormat.CODE_128]
-    );
-    hints.set(ZXingBrowser.DecodeHintType.TRY_HARDER, true);
+   const hints = new Map();
 
-    reader = new ZXingBrowser.BrowserMultiFormatReader(hints, 150);
+hints.set(
+  ZXingBrowser.CommonDecodeHintType.POSSIBLE_FORMATS,
+  [ZXingBrowser.BarcodeFormat.CODE_128]
+);
+
+reader = new ZXingBrowser.BrowserMultiFormatReader(
+  hints,
+  150
+);
 
     const newControls = await reader.decodeFromVideoDevice(
       undefined,
